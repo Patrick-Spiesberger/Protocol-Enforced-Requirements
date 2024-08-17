@@ -5,7 +5,8 @@ import "./PreRequirement.sol";
 import "./MainRequirement.sol";
 import "./PostRequirement.sol";
 
-contract Requirement is IRequirement{
+contract Requirement {
+    // Public variables to store the Pre, Main, and Post requirements
     PreRequirement public preRequirement;
     MainRequirement public mainRequirement;
     PostRequirement public postRequirement;
@@ -27,23 +28,6 @@ contract Requirement is IRequirement{
     }
 
     /**
-     * @notice Checks if pre, main requirements are fulfilled.
-     * @return bool Returns true if requirements are fulfilled, otherwise false.
-     */
-    function isFulfilled() external view returns (bool) {
-        return preRequirement.isFulfilled() &&
-               mainRequirement.isFulfilled();
-    }
-
-        /**
-     * @notice Checks if post requirement is fulfilled.
-     * @return bool Returns true if post requirements is fulfilled, otherwise false.
-     */
-    function isPostReequirementFulfilled() external view returns (bool) {
-        return postRequirement.isFulfilled();
-    }
-
-    /**
      * @notice Encodes the requirement data into bytes.
      * @return bytes Encoded requirement data.
      */
@@ -60,5 +44,29 @@ contract Requirement is IRequirement{
      */
     function decodeRequirement(bytes memory data) external pure returns (PreRequirement preReq, MainRequirement mainReq, PostRequirement postReq) {
         (preReq, mainReq, postReq) = abi.decode(data, (PreRequirement, MainRequirement, PostRequirement));
+    }
+
+    /**
+     * @notice Allows updating of the PreRequirement.
+     * @param _preRequirement The new PreRequirement contract.
+     */
+    function updatePreRequirement(PreRequirement _preRequirement) external {
+        preRequirement = _preRequirement;
+    }
+
+    /**
+     * @notice Allows updating of the MainRequirement.
+     * @param _mainRequirement The new MainRequirement contract.
+     */
+    function updateMainRequirement(MainRequirement _mainRequirement) external {
+        mainRequirement = _mainRequirement;
+    }
+
+    /**
+     * @notice Allows updating of the PostRequirement.
+     * @param _postRequirement The new PostRequirement contract.
+     */
+    function updatePostRequirement(PostRequirement _postRequirement) external {
+        postRequirement = _postRequirement;
     }
 }
