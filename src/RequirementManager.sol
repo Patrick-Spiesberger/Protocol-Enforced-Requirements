@@ -2,80 +2,138 @@
 pragma solidity ^0.8.0;
 
 import "./Requirement.sol";
-import "./PreRequirement.sol";
-import "./MainRequirement.sol";
-import "./PostRequirement.sol";
 
 contract RequirementManager {
-    // Mapping from address to encoded requirement data
-    mapping(address => bytes) public requirements;
+    // Mapping from sender's address to their encoded requirements (as bytes)
+    mapping(address => bytes) public encodedRequirements;
+
+    // Mapping to store the decoded Requirement contracts for each address
+    mapping(address => Requirement) public decodedRequirements;
 
     /**
-     * @notice Registers a new requirement by encoding it and linking it to the sender's address.
-     * @param _preRequirement The pre-requirement contract.
-     * @param _mainRequirement The main requirement contract.
-     * @param _postRequirement The post requirement contract.
+     * @notice Registers an encoded requirement set for the caller.
+     * @param encodedRequirementsData The encoded requirement data.
      */
-    function registerRequirement(
-        PreRequirement _preRequirement,
-        MainRequirement _mainRequirement,
-        PostRequirement _postRequirement
-    ) external {
-        // Encode the Requirement data
-        bytes memory encodedRequirement = abi.encode(_preRequirement, _mainRequirement, _postRequirement);
-        // Store the encoded requirement in the mapping associated with the sender's address
-        requirements[msg.sender] = encodedRequirement;
-    }
+    function registerEncodedRequirement(bytes memory encodedRequirementsData) external {
+        // Store the encoded requirements
+        encodedRequirements[msg.sender] = encodedRequirementsData;
 
-    /**
-     * @notice Deletes the requirement associated with the sender's address.
-     */
-    function deleteRequirement() external {
-        delete requirements[msg.sender];
-    }
-
-    /**
-     * @notice Fetches and decodes the requirement associated with the specified address.
-     * @param addr The address whose requirement should be fetched.
-     * @return preReq Decoded PreRequirement contract.
-     * @return mainReq Decoded MainRequirement contract.
-     * @return postReq Decoded PostRequirement contract.
-     */
-    function getRequirement(address addr) 
-        external 
-        view 
-        returns (
+        // Decode the requirement data and store the decoded Requirement contract
+        (
             PreRequirement preReq, 
             MainRequirement mainReq, 
             PostRequirement postReq
-        ) 
-    {
-        bytes memory encodedRequirement = requirements[addr];
-        require(encodedRequirement.length > 0, "No requirement found for this address");
-        // Decode the requirement data
-        (preReq, mainReq, postReq) = abi.decode(encodedRequirement, (PreRequirement, MainRequirement, PostRequirement));
+        ) = Requirement(address(0)).decodeRequirement(encodedRequirementsData);
+
+        decodedRequirements[msg.sender] = new Requirement(preReq, mainReq, postReq);
     }
 
     /**
-     * @notice Retrieves the commitment indicator function for the pre-, main-, and post-conditions for a specific address.
-     * @param addr The address whose requirement commitments should be checked.
-     * @return preCommitment The commitment status of the pre-requirement.
-     * @return mainCommitment The commitment status of the main requirement.
-     * @return postCommitment The commitment status of the post-requirement.
+     * @notice Fetches the decoded requirements for a specific address.
+     * @param entity The address of the entity.
+     * @return The decoded Requirement contract.
      */
-    function getCommitmentIndicators(address addr)
-        external
-        view
-        returns (
-            bool preCommitment,
-            bool mainCommitment,
-            bool postCommitment
-        )
-    {
-        (PreRequirement preReq, MainRequirement mainReq, PostRequirement postReq) = this.getRequirement(addr);
-        
-        preCommitment = preReq.isFulfilled();
-        mainCommitment = mainReq.isFulfilled();
-        postCommitment = postReq.isFulfilled();
+    function getDecodedRequirement(address entity) external view returns (Requirement) {
+        return decodedRequirements[entity];
+    }
+
+    /**
+     * @notice Deletes the PreRequirement for the caller.
+     */
+    function deletePreRequirement() external {
+        Requirement requirement = decodedRequirements[msg.sender];
+        require(address(requirement) != address(0), "No requirement found for this address");
+
+        // Create a new Requirement with PreRequirement set to a default address (nullifying it)
+        decodedRequirements[msg.sender] = new Requirement(
+            PreRequirement(address(0)),
+            requirement.mainRequirement(),
+            requirement.postRequirement()
+        );
+
+        // Update the encoded requirements as well
+        encodedRequirements[msg.sender] = abi.encode(
+            PreRequirement(address(0)),
+            requirement.mainRequirement(),
+            requirement.postRequirement()
+        );
+    }
+
+    /**
+     * @notice Deletes the MainRequirement for the caller.
+     */
+    function deleteMainRequirement() external {
+        Requirement requirement = decodedRequirements[msg.sender];
+        require(address(requirement) != address(0), "No requirement found for this address");
+
+        // Create a new Requirement with MainRequirement set to a default address (nullifying it)
+        decodedRequirements[msg.sender] = new Requirement(
+            requirement.preRequirement(),
+            MainRequirement(address(0)),
+            requirement.postRequirement()
+        );
+
+        // Update the encoded requirements as well
+        encodedRequirements[msg.sender] = abi.encode(
+            requirement.preRequirement(),
+            MainRequirement(address(0)),
+            requirement.postRequirement()
+        );
+    }
+
+    /**
+     * @notice Deletes the PostRequirement for the caller.
+     */
+    function deletePostRequirement() external {
+        Requirement requirement = decodedRequirements[msg.sender];
+        require(address(requirement) != address(0), "No requirement found for this address");
+
+        // Create a new Requirement with PostRequirement set to a default address (nullifying it)
+        decodedRequirements[msg.sender] = new Requirement(
+            requirement.preRequirement(),
+            requirement.mainRequirement(),
+            PostRequirement(address(0))
+        );
+
+        // Update the encoded requirements as well
+        encodedRequirements[msg.sender] = abi.encode(
+            requirement.preRequirement(),
+            requirement.mainRequirement(),
+            PostRequirement(address(0))
+        );
+    }
+
+    /**
+     * @notice Retrieves the commitment indicators for Pre and Main requirements.
+     * @param entity The address of the entity.
+     * @return preCommitment True if the PreRequirement is fulfilled.
+     * @return mainCommitment True if the MainRequirement is fulfilled.
+     */
+    function getBlockCommitmentIndicators(address entity) external view returns (bool preCommitment, bool mainCommitment) {
+        Requirement requirement = decodedRequirements[entity];
+        require(address(requirement) != address(0), "No requirement found for this address");
+
+        preCommitment = requirement.preRequirement().isFulfilled();
+        mainCommitment = requirement.mainRequirement().isFulfilled();
+    }
+
+    /**
+     * @notice Retrieves the commitment indicator for Post requirement.
+     * @param entity The address of the entity.
+     * @return postCommitment True if the PostRequirement is fulfilled.
+     */
+    function getStateCommitmentIndicators(address entity) external view returns (bool postCommitment) {
+        Requirement requirement = decodedRequirements[entity];
+        require(address(requirement) != address(0), "No requirement found for this address");
+
+        postCommitment = requirement.postRequirement().isFulfilled();
+    }
+
+    /**
+     * @notice Deletes all requirements for the caller.
+     */
+    function deleteRequirement() external {
+        delete encodedRequirements[msg.sender];
+        delete decodedRequirements[msg.sender];
     }
 }

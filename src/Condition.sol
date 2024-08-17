@@ -9,7 +9,7 @@ contract Condition is ICondition {
      * @notice Checks whether the condition is fulfilled.
      * @return bool Returns true if the condition is fulfilled, otherwise false.
      */
-    function isFulfilled() pure external override returns (bool) {
+    function isFulfilled() public view override returns (bool) {
         return true;
     }
 }

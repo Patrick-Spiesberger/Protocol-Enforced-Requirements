@@ -5,7 +5,7 @@ import "./PreRequirement.sol";
 import "./MainRequirement.sol";
 import "./PostRequirement.sol";
 
-contract Requirement {
+contract Requirement is IRequirement{
     PreRequirement public preRequirement;
     MainRequirement public mainRequirement;
     PostRequirement public postRequirement;
