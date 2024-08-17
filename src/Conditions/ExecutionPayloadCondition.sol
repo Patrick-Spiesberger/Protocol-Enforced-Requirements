@@ -24,22 +24,6 @@ abstract contract ExecutionPayloadCondition is ICondition {
         return blockhash(block.number - 1);
     }
 
-    function getFeeRecipient() internal view returns (address) {
-        return address(0); // Placeholder as Solidity doesn't provide direct access to this field
-    }
-
-    function getStateRoot() internal view returns (bytes32) {
-        return bytes32(0); // Placeholder, needs specific method
-    }
-
-    function getReceiptsRoot() internal view returns (bytes32) {
-        return bytes32(0); // Placeholder, needs specific method
-    }
-
-    function getLogsBloom() internal view returns (bytes32) {
-        return bytes32(0); // Placeholder, needs specific method
-    }
-
     function getPrevRandao() internal view returns (uint256) {
         return block.prevrandao;
     }
@@ -109,22 +93,6 @@ contract ExecutionPayloadConditions is ExecutionPayloadCondition {
         return getParentHash() == expectedParentHash;
     }
 
-    function evaluateFeeRecipient() internal view returns (bool) {
-        return getFeeRecipient() == expectedFeeRecipient;
-    }
-
-    function evaluateStateRoot() internal view returns (bool) {
-        return getStateRoot() == expectedStateRoot;
-    }
-
-    function evaluateReceiptsRoot() internal view returns (bool) {
-        return getReceiptsRoot() == expectedReceiptsRoot;
-    }
-
-    function evaluateLogsBloom() internal view returns (bool) {
-        return getLogsBloom() == expectedLogsBloom;
-    }
-
     function evaluatePrevRandao() internal view returns (bool) {
         return getPrevRandao() == expectedPrevRandao;
     }
@@ -157,10 +125,6 @@ contract ExecutionPayloadConditions is ExecutionPayloadCondition {
     function isFulfilled() public view override returns (bool) {
         return (
             evaluateParentHash() &&
-            evaluateFeeRecipient() &&
-            evaluateStateRoot() &&
-            evaluateReceiptsRoot() &&
-            evaluateLogsBloom() &&
             evaluatePrevRandao() &&
             evaluateBlockNumber() &&
             evaluateGasLimit() &&
