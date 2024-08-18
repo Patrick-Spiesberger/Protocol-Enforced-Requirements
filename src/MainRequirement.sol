@@ -2,16 +2,16 @@
 pragma solidity ^0.8.0;
 
 import "./IRequirement.sol";
-import "./Condition.sol";
+import "./ICondition.sol";
 
 contract MainRequirement is IRequirement {
-    Condition[] public conditions;
+    ICondition[] public conditions;
 
     /**
      * @notice Adds a new condition to the main requirement.
      * @param _condition The condition contract to add.
      */
-    function addCondition(Condition _condition) external {
+    function addCondition(ICondition _condition) external {
         conditions.push(_condition);
     }
 
@@ -63,7 +63,7 @@ contract MainRequirement is IRequirement {
         delete conditions;
 
         for (uint i = 0; i < encodedConditions.length; i++) {
-            Condition condition = abi.decode(encodedConditions[i], (Condition));
+            ICondition condition = abi.decode(encodedConditions[i], (ICondition));
             conditions.push(condition);
         }
     }
