@@ -1,2 +1,2 @@
 # Ethereum: Protocol Enforced Requirements
-![](images/per_uml_diagramm.jpg)
+![](images/per_uml.svg)
