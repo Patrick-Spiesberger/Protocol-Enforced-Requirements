@@ -69,5 +69,3 @@ requirement = new Requirement(
 );
 ```
 You can then call the `encodeRequirement()` function on this requirement to generate the encoded string, which can be registered in the `RequirementManager` via a transaction.
-
-## :fast_forward: TODO and Limitations
