@@ -21,6 +21,30 @@ A `Requirement` is fundamentally divided into three sections:
 
 A `Requirement` is a bundle of these three sections, with each type of requirement containing a list of Conditions that must ALL be met. Verification is currently possible only at the `Condition` level and not within the `Requirement` itself.
 
-
-
+### Condition
+A `Condition` object must implement the `ICondition` interface. This interface includes an `isFulfilled` method, which defines the criteria under which the condition is considered met. We have already created appropriate conditions for all fields of a block accessible through the Solidity interface, and these can be found under `src/Conditions`.
+An overview of the structure and the conditions can be found in the following UML diagram
 ![](images/per_uml.svg)
+
+## :fast_forward: How to create a Requirement
+In the `RequirementManager`, a requirement can be registered via an encoded string. To generate this string, a `Requirement` object, composed of the sections described above, is needed. For each of the Pre-, Main-, and PostRequirements, an object can be created with an initial list of conditions that is empty. This is done as follows:
+
+1. `PreRequirement preRequirement = new PreRequirement();`
+2. `MainRequirement mainRequirement = new MainRequirement();`
+3. `PostRequirement postRequirement = new PostRequirement();`
+
+Next, a condition must be specified. You can either add a new condition (which must be deployed as a smart contract on the blockchain) or use an existing condition. For example, if you want to create a condition that pertains to the block header, it would look like this:
+
+```solidity
+BlockHeaderConditions condition_example = new BlockHeaderConditions(
+    42,
+    address(0x1234567890abcdef1234567890abcdef12345678),
+    8000000,
+    1000000000,
+    1,
+    0,
+    42
+);
+```
+
+## :fast_forward: TODO and Limitations
