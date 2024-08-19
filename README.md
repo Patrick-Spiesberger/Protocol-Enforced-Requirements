@@ -27,13 +27,19 @@ An overview of the structure and the conditions can be found in the following UM
 ![](images/per_uml.svg)
 
 ## :fast_forward: How to create a Requirement
-In the `RequirementManager`, a requirement can be registered via an encoded string. To generate this string, a `Requirement` object, composed of the sections described above, is needed. For each of the Pre-, Main-, and PostRequirements, an object can be created with an initial list of conditions that is empty. This is done as follows:
+To register a requirement in the `RequirementManager`, you first need to create a `Requirement` object that includes the necessary sections. Below is how you can initialize the sections:
 
-1. `PreRequirement preRequirement = new PreRequirement();`
-2. `MainRequirement mainRequirement = new MainRequirement();`
-3. `PostRequirement postRequirement = new PostRequirement();`
+```solidity
+PreRequirement preRequirement = new PreRequirement();
+MainRequirement mainRequirement = new MainRequirement(); 
+PostRequirement postRequirement = new PostRequirement();
+```
 
-Next, a condition must be specified. You can either add a new condition (which must be deployed as a smart contract on the blockchain) or use an existing condition. For example, if you want to create a condition that pertains to the block header, it would look like this:
+Each of these objects starts with an empty list of conditions.
+
+After creating the `Requirement` object, you need to specify the conditions under which it will be fulfilled. You can either create a new condition (which must be deployed as a smart contract on the blockchain) or use an existing one.
+
+Here’s an example of how to create a condition related to the block header:
 
 ```solidity
 BlockHeaderConditions condition_example = new BlockHeaderConditions(
@@ -46,5 +52,22 @@ BlockHeaderConditions condition_example = new BlockHeaderConditions(
     42
 );
 ```
+
+Once the condition is created, it can be added to the list of the respective (Pre, Main, Post) requirement using the `addCondition(Condition)` method. In the example above, this would look like:
+
+```solidity
+mainRequirement.addCondition(condition_example);
+```
+
+The requirement can then be created using the constructor as follows:
+
+```solidity
+requirement = new Requirement(
+    preRequirement,
+    mainRequirement,
+    postRequirement
+);
+```
+You can then call the `encodeRequirement()` function on this requirement to generate the encoded string, which can be registered in the `RequirementManager` via a transaction.
 
 ## :fast_forward: TODO and Limitations
