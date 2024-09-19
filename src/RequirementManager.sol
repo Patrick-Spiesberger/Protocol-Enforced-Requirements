@@ -2,6 +2,7 @@
 pragma solidity ^0.8.0;
 
 import "./Requirement.sol";
+import "./BLSHelper.sol";
 
 contract RequirementManager {
     // Define a constant for the finalization block threshold
@@ -188,4 +189,50 @@ contract RequirementManager {
 
         postCommitment = postReq.isFulfilled();
     }
+
+    /**
+     * @notice Executes failure if PostRequirement is not fulfilled.
+     * @param entity The address of the entity.
+     * @param blsSignatures Array of BLS signatures from CSC members.
+     * @param publicKeys Array of public keys of CSC members who signed.
+     */
+    function executeFailureIfConditionNotFulfilled(
+        address entity,
+        bytes[] memory blsSignatures,
+        bytes32[] memory publicKeys
+    ) external {
+        RequirementData storage data = requirements[entity];
+        require(data.encodedRequirements.length > 0, "No requirement found for this address");
+        require(isRequirementFinalized(entity), "Requirement is not finalized yet");
+
+        // Decode the requirement data
+        (
+            PreRequirement preReq,
+            ,
+            PostRequirement postReq
+        ) = Requirement(address(0)).decodeRequirement(data.encodedRequirements);
+
+        // Check if the PreRequirement is fulfilled
+        if (!preReq.isFulfilled()) {
+            require(
+                BLSHelper.verifyBLSSignatures(blsSignatures, publicKeys),
+                "Not enough valid signatures from CSC members"
+            );
+
+            // Execute failure in the PreRequirement
+            preReq.executeFailure();
+        }
+
+        // Check if the PostRequirement is fulfilled
+        if (!postReq.isFulfilled()) {
+            require(
+                BLSHelper.verifyBLSSignatures(blsSignatures, publicKeys),
+                "Not enough valid signatures from CSC members"
+            );
+
+            // Execute failure in the PostRequirement
+            postReq.executeFailure();
+        }
+    }
+
 }
