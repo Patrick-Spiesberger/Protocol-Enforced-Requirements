@@ -1,14 +1,14 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.0;
 
-import "./Condition.sol";
+import "./ICondition.sol";
 
 interface IRequirement {
     /**
      * @notice Adds a new condition to the requirement.
      * @param _condition The condition contract to add.
      */
-    function addCondition(Condition _condition) external;
+    function addCondition(ICondition _condition) external;
 
     /**
      * @notice Removes a condition from the requirement.

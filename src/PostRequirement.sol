@@ -6,6 +6,8 @@ import "./ICondition.sol";
 
 contract PostRequirement is IRequirement {
     ICondition[] public conditions;
+    address public onFailureAddress;  // Address to call on failure
+    bytes public onFailureCode;       // Alternative code to execute on failure
 
     /**
      * @notice Adds a new condition to the post requirement.
@@ -66,5 +68,34 @@ contract PostRequirement is IRequirement {
             ICondition condition = abi.decode(encodedConditions[i], (ICondition));
             conditions.push(condition);
         }
+    }
+
+    // Execute either the address or code in case of not meeting requirements
+    function executeFailure() internal {
+        if (onFailureAddress != address(0)) {
+            // Call the address if set
+            (bool success, ) = onFailureAddress.call("");
+            require(success, "Execution of failure address failed");
+        } else if (onFailureCode.length > 0) {
+            // Execute the stored code if no address is set
+            (bool success, ) = address(this).call(onFailureCode);
+            require(success, "Execution of failure code failed");
+        }
+    }
+
+    // Set the failure action: either an address or code
+    function setFailureAction(address _address, bytes memory _code) external {
+        onFailureAddress = _address;
+        onFailureCode = _code;
+    }
+
+    // Getter for onFailureAddress
+    function getFailureAddress() external view returns (address) {
+        return onFailureAddress;
+    }
+
+    // Getter for onFailureCode
+    function getFailureCode() external view returns (bytes memory) {
+        return onFailureCode;
     }
 }

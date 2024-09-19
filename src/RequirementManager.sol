@@ -4,103 +4,151 @@ pragma solidity ^0.8.0;
 import "./Requirement.sol";
 
 contract RequirementManager {
-    // Mapping from sender's address to their encoded requirements (as bytes)
-    mapping(address => bytes) public encodedRequirements;
+    // Define a constant for the finalization block threshold
+    uint256 private constant FINALIZATION_THRESHOLD = 48;
 
-    // Mapping to store the decoded Requirement contracts for each address
-    mapping(address => Requirement) public decodedRequirements;
+    // Mapping from sender's address to their encoded requirements (as bytes) and the block number
+    struct RequirementData {
+        bytes encodedRequirements;
+        uint256 blockNumber;
+    }
+
+    mapping(address => RequirementData) public requirements;
 
     /**
      * @notice Registers an encoded requirement set for the caller.
      * @param encodedRequirementsData The encoded requirement data.
      */
     function registerEncodedRequirement(bytes memory encodedRequirementsData) external {
-        // Store the encoded requirements
-        encodedRequirements[msg.sender] = encodedRequirementsData;
-
-        // Decode the requirement data and store the decoded Requirement contract
-        (
-            PreRequirement preReq, 
-            MainRequirement mainReq, 
-            PostRequirement postReq
-        ) = Requirement(address(0)).decodeRequirement(encodedRequirementsData);
-
-        decodedRequirements[msg.sender] = new Requirement(preReq, mainReq, postReq);
+        // Store the encoded requirements and the current block number
+        requirements[msg.sender] = RequirementData({
+            encodedRequirements: encodedRequirementsData,
+            blockNumber: block.number
+        });
     }
 
     /**
-     * @notice Fetches the decoded requirements for a specific address.
+     * @notice Fetches the encoded requirements and block number for a specific address.
      * @param entity The address of the entity.
-     * @return The decoded Requirement contract.
+     * @return The encoded requirements data and the block number.
      */
-    function getDecodedRequirement(address entity) external view returns (Requirement) {
-        return decodedRequirements[entity];
+    function getRequirementData(address entity) external view returns (bytes memory, uint256) {
+        RequirementData storage data = requirements[entity];
+        return (data.encodedRequirements, data.blockNumber);
     }
 
     /**
      * @notice Deletes the PreRequirement for the caller.
      */
     function deletePreRequirement() external {
-        Requirement requirement = decodedRequirements[msg.sender];
-        require(address(requirement) != address(0), "No requirement found for this address");
+        RequirementData storage data = requirements[msg.sender];
+        require(data.encodedRequirements.length > 0, "No requirement found for this address");
 
-        // Create a new Requirement with PreRequirement set to a default address (nullifying it)
-        decodedRequirements[msg.sender] = new Requirement(
+        // Decode the requirement data
+        (
+            ,
+            MainRequirement mainReq,
+            PostRequirement postReq
+        ) = Requirement(address(0)).decodeRequirement(data.encodedRequirements);
+
+        // Create a new encoded data with PreRequirement nullified
+        bytes memory newEncodedData = abi.encode(
             PreRequirement(address(0)),
-            requirement.mainRequirement(),
-            requirement.postRequirement()
+            mainReq,
+            postReq
         );
 
-        // Update the encoded requirements as well
-        encodedRequirements[msg.sender] = abi.encode(
-            PreRequirement(address(0)),
-            requirement.mainRequirement(),
-            requirement.postRequirement()
-        );
+        // Update the stored encoded requirements and block number
+        requirements[msg.sender] = RequirementData({
+            encodedRequirements: newEncodedData,
+            blockNumber: block.number
+        });
     }
 
     /**
      * @notice Deletes the MainRequirement for the caller.
      */
     function deleteMainRequirement() external {
-        Requirement requirement = decodedRequirements[msg.sender];
-        require(address(requirement) != address(0), "No requirement found for this address");
+        RequirementData storage data = requirements[msg.sender];
+        require(data.encodedRequirements.length > 0, "No requirement found for this address");
 
-        // Create a new Requirement with MainRequirement set to a default address (nullifying it)
-        decodedRequirements[msg.sender] = new Requirement(
-            requirement.preRequirement(),
+        // Decode the requirement data
+        (
+            PreRequirement preReq,
+            ,
+            PostRequirement postReq
+        ) = Requirement(address(0)).decodeRequirement(data.encodedRequirements);
+
+        // Create a new encoded data with MainRequirement nullified
+        bytes memory newEncodedData = abi.encode(
+            preReq,
             MainRequirement(address(0)),
-            requirement.postRequirement()
+            postReq
         );
 
-        // Update the encoded requirements as well
-        encodedRequirements[msg.sender] = abi.encode(
-            requirement.preRequirement(),
-            MainRequirement(address(0)),
-            requirement.postRequirement()
-        );
+        // Update the stored encoded requirements and block number
+        requirements[msg.sender] = RequirementData({
+            encodedRequirements: newEncodedData,
+            blockNumber: block.number
+        });
     }
 
     /**
      * @notice Deletes the PostRequirement for the caller.
      */
     function deletePostRequirement() external {
-        Requirement requirement = decodedRequirements[msg.sender];
-        require(address(requirement) != address(0), "No requirement found for this address");
+        RequirementData storage data = requirements[msg.sender];
+        require(data.encodedRequirements.length > 0, "No requirement found for this address");
 
-        // Create a new Requirement with PostRequirement set to a default address (nullifying it)
-        decodedRequirements[msg.sender] = new Requirement(
-            requirement.preRequirement(),
-            requirement.mainRequirement(),
+        // Decode the requirement data
+        (PreRequirement preReq, MainRequirement mainReq, ) = Requirement(address(0)).decodeRequirement(data.encodedRequirements);
+
+        // Create a new encoded data with PostRequirement nullified
+        bytes memory newEncodedData = abi.encode(
+            preReq,
+            mainReq,
             PostRequirement(address(0))
         );
 
-        // Update the encoded requirements as well
-        encodedRequirements[msg.sender] = abi.encode(
-            requirement.preRequirement(),
-            requirement.mainRequirement(),
-            PostRequirement(address(0))
-        );
+        // Update the stored encoded requirements and block number
+        requirements[msg.sender] = RequirementData({
+            encodedRequirements: newEncodedData,
+            blockNumber: block.number
+        });
+    }
+
+    /**
+     * @notice Deletes all requirements for the caller.
+     */
+    function deleteRequirement() external {
+        delete requirements[msg.sender];
+    }
+
+    /**
+     * @notice Copies the requirements from another user to the caller.
+     * @param source The address of the user whose requirements are to be copied.
+     */
+    function copyRequirement(address source) external {
+        RequirementData storage sourceData = requirements[source];
+        require(sourceData.encodedRequirements.length > 0, "No encoded requirements found for the source address");
+
+        // Store the copied encoded requirements and the current block number
+        requirements[msg.sender] = RequirementData({
+            encodedRequirements: sourceData.encodedRequirements,
+            blockNumber: block.number
+        });
+    }
+
+    /**
+     * @notice Checks if the requirement is finalized based on the block number.
+     * @param entity The address of the entity.
+     * @return True if the requirement is finalized (i.e., the block number plus the threshold is less than or equal to the current block number).
+     */
+    function isRequirementFinalized(address entity) public view returns (bool) {
+        RequirementData storage data = requirements[entity];
+        require(data.encodedRequirements.length > 0, "No requirement found for this address");
+
+        return (block.number >= data.blockNumber + FINALIZATION_THRESHOLD);
     }
 
     /**
@@ -110,11 +158,15 @@ contract RequirementManager {
      * @return mainCommitment True if the MainRequirement is fulfilled.
      */
     function getBlockCommitmentIndicators(address entity) external view returns (bool preCommitment, bool mainCommitment) {
-        Requirement requirement = decodedRequirements[entity];
-        require(address(requirement) != address(0), "No requirement found for this address");
+        RequirementData storage data = requirements[entity];
+        require(data.encodedRequirements.length > 0, "No requirement found for this address");
+        require(isRequirementFinalized(entity), "Requirement is not finalized yet");
 
-        preCommitment = requirement.preRequirement().isFulfilled();
-        mainCommitment = requirement.mainRequirement().isFulfilled();
+        // Decode the requirement data
+        (PreRequirement preReq, MainRequirement mainReq, ) = Requirement(address(0)).decodeRequirement(data.encodedRequirements);
+
+        preCommitment = preReq.isFulfilled();
+        mainCommitment = mainReq.isFulfilled();
     }
 
     /**
@@ -123,17 +175,17 @@ contract RequirementManager {
      * @return postCommitment True if the PostRequirement is fulfilled.
      */
     function getStateCommitmentIndicators(address entity) external view returns (bool postCommitment) {
-        Requirement requirement = decodedRequirements[entity];
-        require(address(requirement) != address(0), "No requirement found for this address");
+        RequirementData storage data = requirements[entity];
+        require(data.encodedRequirements.length > 0, "No requirement found for this address");
+        require(isRequirementFinalized(entity), "Requirement is not finalized yet");
 
-        postCommitment = requirement.postRequirement().isFulfilled();
-    }
+        // Decode the requirement data
+        (
+            ,
+            ,
+            PostRequirement postReq
+        ) = Requirement(address(0)).decodeRequirement(data.encodedRequirements);
 
-    /**
-     * @notice Deletes all requirements for the caller.
-     */
-    function deleteRequirement() external {
-        delete encodedRequirements[msg.sender];
-        delete decodedRequirements[msg.sender];
+        postCommitment = postReq.isFulfilled();
     }
 }
